@@ -1,4 +1,4 @@
-package io.github.grantchen2003.cdb.tx.manager.redis;
+package io.github.grantchen2003.cdb.tx.manager.redis.service;
 
 import io.github.grantchen2003.cdb.tx.manager.redis.grpc.CommitTransactionRequest;
 import io.github.grantchen2003.cdb.tx.manager.redis.grpc.CommitTransactionResponse;
