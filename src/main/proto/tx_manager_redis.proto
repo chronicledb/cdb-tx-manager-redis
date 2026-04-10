@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package cdb.tx.manager.redis;
+
+option java_multiple_files = true;
+option java_package = "io.github.grantchen2003.cdb.tx.manager.redis.grpc";
+
+service TxManagerRedisService {
+  rpc CommitTransaction (CommitTransactionRequest) returns (CommitTransactionResponse);
+}
+
+message Operation {
+  enum OpType {
+    PUT = 0;
+    DELETE = 1;
+  }
+
+  OpType op_type = 1;
+  string table = 2;
+  string data = 3;
+}
+
+message CommitTransactionRequest {
+  uint64 expected_seq_num = 1;
+  repeated Operation operations = 2;
+}
+
+message CommitTransactionResponse {
+  enum Code {
+    SUCCESS = 0;
+  }
+
+  Code status = 1;
+  int64 applied_seq_num = 2;
+}
