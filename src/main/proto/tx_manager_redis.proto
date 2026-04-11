@@ -28,6 +28,7 @@ message CommitTransactionRequest {
 message CommitTransactionResponse {
   enum Code {
     SUCCESS = 0;
+    FAILURE = 1;
   }
 
   Code status = 1;
