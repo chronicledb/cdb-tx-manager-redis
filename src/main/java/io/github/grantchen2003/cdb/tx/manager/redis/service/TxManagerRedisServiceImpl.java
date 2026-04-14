@@ -2,37 +2,48 @@ package io.github.grantchen2003.cdb.tx.manager.redis.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.grantchen2003.cdb.tx.manager.redis.chronicle.ChronicleClient;
 import io.github.grantchen2003.cdb.tx.manager.redis.grpc.CommitTransactionRequest;
 import io.github.grantchen2003.cdb.tx.manager.redis.grpc.CommitTransactionResponse;
-import io.github.grantchen2003.cdb.tx.manager.redis.grpc.Operation;
 import io.github.grantchen2003.cdb.tx.manager.redis.grpc.TxManagerRedisServiceGrpc;
+import io.github.grantchen2003.cdb.tx.manager.redis.tx.Operation;
+import io.github.grantchen2003.cdb.tx.manager.redis.tx.Transaction;
 import io.github.grantchen2003.cdb.tx.manager.redis.writeschema.WriteSchema;
 import io.grpc.stub.StreamObserver;
 
-import java.util.List;
 import java.util.Map;
 
 public class TxManagerRedisServiceImpl extends TxManagerRedisServiceGrpc.TxManagerRedisServiceImplBase {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
+    private final ChronicleClient chronicleClient;
     private final WriteSchema writeSchema;
 
-    public TxManagerRedisServiceImpl(WriteSchema writeSchema) {
+    public TxManagerRedisServiceImpl(ChronicleClient chronicleClient, WriteSchema writeSchema) {
+        this.chronicleClient = chronicleClient;
         this.writeSchema = writeSchema;
     }
 
     @Override
     public void commitTransaction(CommitTransactionRequest request, StreamObserver<CommitTransactionResponse> responseObserver) {
-        final long expectedSeqNum = request.getExpectedSeqNum();
-        final List<Operation> operations = request.getOperationsList();
+        final Transaction tx = new Transaction(
+                request.getExpectedSeqNum(),
+                request.getOperationsList().stream()
+                        .map(op -> new Operation(
+                                Operation.OpType.valueOf(op.getOpType().name()),
+                                op.getTable(),
+                                op.getData()
+                        ))
+                        .toList()
+        );
 
-        for (final Operation op : operations) {
+        for (final Operation op : tx.operations()) {
             final String validationError = validateAgainstWriteSchema(op);
             if (validationError != null) {
                 final CommitTransactionResponse failureResponse = CommitTransactionResponse.newBuilder()
                         .setStatus(CommitTransactionResponse.Code.FAILURE)
-                        .setAppliedSeqNum(expectedSeqNum)
+                        .setAppliedSeqNum(tx.expectedSeqNum())
                         .build();
                 responseObserver.onNext(failureResponse);
                 responseObserver.onCompleted();
@@ -40,9 +51,15 @@ public class TxManagerRedisServiceImpl extends TxManagerRedisServiceGrpc.TxManag
             }
         }
 
+        final long lastCommitedSeqNum = chronicleClient.appendTx(tx);
+
+        final CommitTransactionResponse.Code status = lastCommitedSeqNum == tx.expectedSeqNum() + 1
+                ? CommitTransactionResponse.Code.SUCCESS
+                : CommitTransactionResponse.Code.FAILURE;
+
         final CommitTransactionResponse response = CommitTransactionResponse.newBuilder()
-                .setStatus(CommitTransactionResponse.Code.SUCCESS)
-                .setAppliedSeqNum(expectedSeqNum + 1)
+                .setStatus(status)
+                .setAppliedSeqNum(lastCommitedSeqNum)
                 .build();
 
         responseObserver.onNext(response);
@@ -50,7 +67,7 @@ public class TxManagerRedisServiceImpl extends TxManagerRedisServiceGrpc.TxManag
     }
 
     private String validateAgainstWriteSchema(Operation op) {
-        final String tableName = op.getTable();
+        final String tableName = op.table();
         final Map<String, WriteSchema.TableDefinition> tables = writeSchema.tables();
 
         if (!tables.containsKey(tableName)) {
@@ -60,7 +77,7 @@ public class TxManagerRedisServiceImpl extends TxManagerRedisServiceGrpc.TxManag
         final WriteSchema.TableDefinition tableDef = tables.get(tableName);
         final Map<String, String> allowedAttributes = tableDef.attributeTypes();
 
-        final Map<String, Object> data = parseData(op.getData());
+        final Map<String, Object> data = parseData(op.data());
         if (data == null) {
             return String.format("Failed to parse data for operation on table '%s': not valid JSON", tableName);
         }
