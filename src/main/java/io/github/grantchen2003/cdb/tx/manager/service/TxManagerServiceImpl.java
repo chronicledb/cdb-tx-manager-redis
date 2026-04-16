@@ -2,7 +2,7 @@ package io.github.grantchen2003.cdb.tx.manager.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.github.grantchen2003.cdb.tx.manager.chronicle.ChronicleClient;
+import io.github.grantchen2003.cdb.tx.manager.chronicle.ChronicleServiceClient;
 import io.github.grantchen2003.cdb.tx.manager.grpc.CommitTransactionRequest;
 import io.github.grantchen2003.cdb.tx.manager.grpc.CommitTransactionResponse;
 import io.github.grantchen2003.cdb.tx.manager.grpc.TxManagerServiceGrpc;
@@ -17,11 +17,11 @@ public class TxManagerServiceImpl extends TxManagerServiceGrpc.TxManagerServiceI
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
-    private final ChronicleClient chronicleClient;
+    private final ChronicleServiceClient chronicleServiceClient;
     private final WriteSchema writeSchema;
 
-    public TxManagerServiceImpl(ChronicleClient chronicleClient, WriteSchema writeSchema) {
-        this.chronicleClient = chronicleClient;
+    public TxManagerServiceImpl(ChronicleServiceClient chronicleServiceClient, WriteSchema writeSchema) {
+        this.chronicleServiceClient = chronicleServiceClient;
         this.writeSchema = writeSchema;
     }
 
@@ -51,7 +51,7 @@ public class TxManagerServiceImpl extends TxManagerServiceGrpc.TxManagerServiceI
             }
         }
 
-        final long lastCommitedSeqNum = chronicleClient.appendTx(tx);
+        final long lastCommitedSeqNum = chronicleServiceClient.appendTx(tx);
 
         final CommitTransactionResponse.Code status = lastCommitedSeqNum == tx.expectedSeqNum() + 1
                 ? CommitTransactionResponse.Code.SUCCESS

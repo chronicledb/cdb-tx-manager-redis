@@ -1,6 +1,6 @@
 package io.github.grantchen2003.cdb.tx.manager.service;
 
-import io.github.grantchen2003.cdb.tx.manager.chronicle.ChronicleClient;
+import io.github.grantchen2003.cdb.tx.manager.chronicle.ChronicleServiceClient;
 import io.github.grantchen2003.cdb.tx.manager.grpc.CommitTransactionRequest;
 import io.github.grantchen2003.cdb.tx.manager.grpc.CommitTransactionResponse;
 import io.github.grantchen2003.cdb.tx.manager.grpc.Operation;
@@ -21,7 +21,7 @@ import static org.mockito.Mockito.when;
 
 class TxManagerServiceImplTest {
 
-    private ChronicleClient chronicleClientMock;
+    private ChronicleServiceClient chronicleServiceClientMock;
     private WriteSchema writeSchemaMock;
     private StreamObserver<CommitTransactionResponse> responseObserverMock;
     private TxManagerServiceImpl service;
@@ -30,7 +30,7 @@ class TxManagerServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        chronicleClientMock = mock(ChronicleClient.class);
+        chronicleServiceClientMock = mock(ChronicleServiceClient.class);
         writeSchemaMock = mock(WriteSchema.class);
         responseObserverMock = mock(StreamObserver.class);
 
@@ -39,7 +39,7 @@ class TxManagerServiceImplTest {
         when(tableDef.attributeTypes()).thenReturn(Map.of("eye", "string"));
         when(writeSchemaMock.tables()).thenReturn(Map.of(TABLE, tableDef));
 
-        service = new TxManagerServiceImpl(chronicleClientMock, writeSchemaMock);
+        service = new TxManagerServiceImpl(chronicleServiceClientMock, writeSchemaMock);
     }
 
     private CommitTransactionRequest buildRequest(long seqNum, String opType, String table, String data) {
@@ -55,7 +55,7 @@ class TxManagerServiceImplTest {
 
     @Test
     void commitTransaction_validRequest_returnsSuccess() {
-        when(chronicleClientMock.appendTx(any(Transaction.class))).thenReturn(2L);
+        when(chronicleServiceClientMock.appendTx(any(Transaction.class))).thenReturn(2L);
 
         final CommitTransactionRequest request = buildRequest(1L, "SET", TABLE, "{\"eye\":\"some-value\"}");
         service.commitTransaction(request, responseObserverMock);
@@ -72,7 +72,7 @@ class TxManagerServiceImplTest {
         final CommitTransactionRequest request = buildRequest(1L, "SET", "unknown_table", "{\"eye\":\"val\"}");
         service.commitTransaction(request, responseObserverMock);
 
-        verify(chronicleClientMock, never()).appendTx(any());
+        verify(chronicleServiceClientMock, never()).appendTx(any());
         verify(responseObserverMock).onNext(argThat(r ->
                 r.getStatus() == CommitTransactionResponse.Code.FAILURE
         ));
@@ -84,7 +84,7 @@ class TxManagerServiceImplTest {
         final CommitTransactionRequest request = buildRequest(1L, "SET", TABLE, "not-json");
         service.commitTransaction(request, responseObserverMock);
 
-        verify(chronicleClientMock, never()).appendTx(any());
+        verify(chronicleServiceClientMock, never()).appendTx(any());
         verify(responseObserverMock).onNext(argThat(r ->
                 r.getStatus() == CommitTransactionResponse.Code.FAILURE
         ));
@@ -94,7 +94,7 @@ class TxManagerServiceImplTest {
     @Test
     void commitTransaction_chronicleReturnsUnexpectedSeqNum_returnsFailure() {
         // chronicle returns a seq num that doesn't match expectedSeqNum + 1
-        when(chronicleClientMock.appendTx(any(Transaction.class))).thenReturn(99L);
+        when(chronicleServiceClientMock.appendTx(any(Transaction.class))).thenReturn(99L);
 
         final CommitTransactionRequest request = buildRequest(1L, "SET", TABLE, "{\"eye\":\"some-value\"}");
         service.commitTransaction(request, responseObserverMock);

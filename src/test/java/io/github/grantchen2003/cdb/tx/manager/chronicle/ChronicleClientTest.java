@@ -21,15 +21,15 @@ import static org.mockito.Mockito.when;
 class ChronicleClientTest {
 
     private ChronicleServiceGrpc.ChronicleServiceBlockingStub stubMock;
-    private ChronicleClient client;
+    private ChronicleServiceClient client;
 
     @BeforeEach
     void setUp() throws Exception {
         stubMock = mock(ChronicleServiceGrpc.ChronicleServiceBlockingStub.class);
 
         // inject mock stub via reflection since the channel is built in the constructor
-        client = new ChronicleClient("localhost", 50051, "chronicle-1");
-        final var field = ChronicleClient.class.getDeclaredField("blockingStub");
+        client = new ChronicleServiceClient("localhost", 50051, "chronicle-1");
+        final var field = ChronicleServiceClient.class.getDeclaredField("blockingStub");
         field.setAccessible(true);
         field.set(client, stubMock);
     }

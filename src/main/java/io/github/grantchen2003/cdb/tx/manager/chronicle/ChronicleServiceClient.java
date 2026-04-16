@@ -7,12 +7,12 @@ import io.github.grantchen2003.cdb.tx.manager.tx.Transaction;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 
-public class ChronicleClient {
+public class ChronicleServiceClient {
 
     private final ChronicleServiceGrpc.ChronicleServiceBlockingStub blockingStub;
     private final String chronicleId;
 
-    public ChronicleClient(String host, int port, String chronicleId) {
+    public ChronicleServiceClient(String host, int port, String chronicleId) {
         final ManagedChannel channel = ManagedChannelBuilder
                 .forAddress(host, port)
                 .usePlaintext()        // TODO: remove this and configure TLS for production
