@@ -1,4 +1,4 @@
-package io.github.grantchen2003.cdb.tx.manager.redis.writeschema;
+package io.github.grantchen2003.cdb.tx.manager.writeschema;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;

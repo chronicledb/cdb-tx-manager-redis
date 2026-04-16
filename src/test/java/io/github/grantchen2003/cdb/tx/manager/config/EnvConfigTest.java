@@ -1,4 +1,4 @@
-package io.github.grantchen2003.cdb.tx.manager.redis.config;
+package io.github.grantchen2003.cdb.tx.manager.config;
 
 import org.junit.jupiter.api.Test;
 

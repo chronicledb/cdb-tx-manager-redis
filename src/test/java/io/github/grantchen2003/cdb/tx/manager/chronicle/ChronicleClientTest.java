@@ -1,10 +1,10 @@
-package io.github.grantchen2003.cdb.tx.manager.redis.chronicle;
+package io.github.grantchen2003.cdb.tx.manager.chronicle;
 
-import io.github.grantchen2003.cdb.tx.manager.redis.grpc.AppendTxRequest;
-import io.github.grantchen2003.cdb.tx.manager.redis.grpc.AppendTxResponse;
-import io.github.grantchen2003.cdb.tx.manager.redis.grpc.ChronicleServiceGrpc;
-import io.github.grantchen2003.cdb.tx.manager.redis.tx.Operation;
-import io.github.grantchen2003.cdb.tx.manager.redis.tx.Transaction;
+import io.github.grantchen2003.cdb.tx.manager.grpc.AppendTxRequest;
+import io.github.grantchen2003.cdb.tx.manager.grpc.AppendTxResponse;
+import io.github.grantchen2003.cdb.tx.manager.grpc.ChronicleServiceGrpc;
+import io.github.grantchen2003.cdb.tx.manager.tx.Operation;
+import io.github.grantchen2003.cdb.tx.manager.tx.Transaction;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;

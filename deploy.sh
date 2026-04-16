@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-ENGINE="redis"
+ENGINE="${1:?Error: You must provide an engine type (e.g., ./deploy.sh redis)}"
 
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 REGION=$(aws configure get region)

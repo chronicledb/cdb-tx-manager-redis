@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>io.github.grantchen2003</groupId>
-    <artifactId>cdb-tx-manager-redis</artifactId>
+    <artifactId>cdb-tx-manager</artifactId>
     <version>1.0-SNAPSHOT</version>
 
     <properties>

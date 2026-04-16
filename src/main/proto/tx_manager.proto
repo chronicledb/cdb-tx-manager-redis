@@ -1,11 +1,11 @@
 syntax = "proto3";
 
-package cdb.tx.manager.redis;
+package cdb.tx.manager;
 
 option java_multiple_files = true;
-option java_package = "io.github.grantchen2003.cdb.tx.manager.redis.grpc";
+option java_package = "io.github.grantchen2003.cdb.tx.manager.grpc";
 
-service TxManagerRedisService {
+service TxManagerService {
   rpc CommitTransaction (CommitTransactionRequest) returns (CommitTransactionResponse);
 }
 

@@ -1,4 +1,4 @@
-package io.github.grantchen2003.cdb.tx.manager.redis.tx;
+package io.github.grantchen2003.cdb.tx.manager.tx;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 

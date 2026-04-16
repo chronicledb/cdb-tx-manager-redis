@@ -1,26 +1,26 @@
-package io.github.grantchen2003.cdb.tx.manager.redis.service;
+package io.github.grantchen2003.cdb.tx.manager.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.github.grantchen2003.cdb.tx.manager.redis.chronicle.ChronicleClient;
-import io.github.grantchen2003.cdb.tx.manager.redis.grpc.CommitTransactionRequest;
-import io.github.grantchen2003.cdb.tx.manager.redis.grpc.CommitTransactionResponse;
-import io.github.grantchen2003.cdb.tx.manager.redis.grpc.TxManagerRedisServiceGrpc;
-import io.github.grantchen2003.cdb.tx.manager.redis.tx.Operation;
-import io.github.grantchen2003.cdb.tx.manager.redis.tx.Transaction;
-import io.github.grantchen2003.cdb.tx.manager.redis.writeschema.WriteSchema;
+import io.github.grantchen2003.cdb.tx.manager.chronicle.ChronicleClient;
+import io.github.grantchen2003.cdb.tx.manager.grpc.CommitTransactionRequest;
+import io.github.grantchen2003.cdb.tx.manager.grpc.CommitTransactionResponse;
+import io.github.grantchen2003.cdb.tx.manager.grpc.TxManagerServiceGrpc;
+import io.github.grantchen2003.cdb.tx.manager.tx.Operation;
+import io.github.grantchen2003.cdb.tx.manager.tx.Transaction;
+import io.github.grantchen2003.cdb.tx.manager.writeschema.WriteSchema;
 import io.grpc.stub.StreamObserver;
 
 import java.util.Map;
 
-public class TxManagerRedisServiceImpl extends TxManagerRedisServiceGrpc.TxManagerRedisServiceImplBase {
+public class TxManagerServiceImpl extends TxManagerServiceGrpc.TxManagerServiceImplBase {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private final ChronicleClient chronicleClient;
     private final WriteSchema writeSchema;
 
-    public TxManagerRedisServiceImpl(ChronicleClient chronicleClient, WriteSchema writeSchema) {
+    public TxManagerServiceImpl(ChronicleClient chronicleClient, WriteSchema writeSchema) {
         this.chronicleClient = chronicleClient;
         this.writeSchema = writeSchema;
     }
