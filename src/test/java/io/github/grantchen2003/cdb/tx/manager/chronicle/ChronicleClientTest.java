@@ -37,7 +37,7 @@ class ChronicleClientTest {
     @Test
     void appendTx_returnsCommittedSeqNum() {
         final Transaction tx = new Transaction(1L, List.of(
-                new Operation(Operation.OpType.SET, "products", "{\"eye\":\"some-value\"}")
+                new Operation(Operation.OpType.PUT, "products", "{\"eye\":\"some-value\"}")
         ));
 
         when(stubMock.appendTx(any())).thenReturn(
@@ -52,7 +52,7 @@ class ChronicleClientTest {
     @Test
     void appendTx_sendsCorrectRequest() {
         final Transaction tx = new Transaction(1L, List.of(
-                new Operation(Operation.OpType.SET, "products", "{\"eye\":\"some-value\"}")
+                new Operation(Operation.OpType.PUT, "products", "{\"eye\":\"some-value\"}")
         ));
 
         when(stubMock.appendTx(any())).thenReturn(

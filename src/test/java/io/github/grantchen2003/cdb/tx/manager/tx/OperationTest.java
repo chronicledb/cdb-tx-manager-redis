@@ -8,17 +8,17 @@ class OperationTest {
 
     @Test
     void serialize_producesExpectedJson() throws Exception {
-        final Operation op = new Operation(Operation.OpType.SET, "products", "{\"eye\":\"some-value\"}");
+        final Operation op = new Operation(Operation.OpType.PUT, "products", "{\"eye\":\"some-value\"}");
         final String json = op.serialize();
 
-        assertTrue(json.contains("\"opType\":\"SET\""));
+        assertTrue(json.contains("\"opType\":\"PUT\""));
         assertTrue(json.contains("\"table\":\"products\""));
         assertTrue(json.contains("\"data\""));
     }
 
     @Test
     void deserialize_roundTrip() {
-        final Operation original = new Operation(Operation.OpType.SET, "products", "{\"eye\":\"some-value\"}");
+        final Operation original = new Operation(Operation.OpType.PUT, "products", "{\"eye\":\"some-value\"}");
         final String json = original.serialize();
         final Operation deserialized = Operation.deserialize(json);
 

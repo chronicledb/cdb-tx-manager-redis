@@ -7,7 +7,7 @@ public record Operation(
         String table,
         String data
 ) {
-    public enum OpType { SET, DELETE }
+    public enum OpType { PUT, DELETE }
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 

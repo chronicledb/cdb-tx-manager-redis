@@ -14,7 +14,7 @@ class TransactionTest {
     @Test
     void serializeOperations_producesJsonArray() throws Exception {
         final List<Operation> ops = List.of(
-                new Operation(Operation.OpType.SET, "products", "{\"eye\":\"some-value\"}"),
+                new Operation(Operation.OpType.PUT, "products", "{\"eye\":\"some-value\"}"),
                 new Operation(Operation.OpType.DELETE, "orders", "{}")
         );
         final Transaction tx = new Transaction(1L, ops);
@@ -24,7 +24,7 @@ class TransactionTest {
 
         assertTrue(parsed.isArray());
         assertEquals(2, parsed.size());
-        assertEquals("SET", parsed.get(0).get("opType").asText());
+        assertEquals("PUT", parsed.get(0).get("opType").asText());
         assertEquals("products", parsed.get(0).get("table").asText());
         assertEquals("DELETE", parsed.get(1).get("opType").asText());
         assertEquals("orders", parsed.get(1).get("table").asText());
