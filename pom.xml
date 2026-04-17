@@ -92,7 +92,7 @@
                             <transformers>
                                 <!-- Sets your main class in the JAR manifest -->
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>io.github.grantchen2003.Main</mainClass>  <!-- ← change this -->
+                                    <mainClass>io.github.grantchen2003.cdb.tx.manager.Main</mainClass>
                                 </transformer>
                                 <!-- Required for gRPC: merges service registry files -->
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
