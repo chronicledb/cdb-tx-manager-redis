@@ -34,7 +34,6 @@ class TxManagerServiceImplTest {
         writeSchemaMock = mock(WriteSchema.class);
         responseObserverMock = mock(StreamObserver.class);
 
-        // set up a valid write schema that accepts "products" with a "name" string field
         WriteSchema.TableDefinition tableDef = mock(WriteSchema.TableDefinition.class);
         when(tableDef.attributeTypes()).thenReturn(Map.of("eye", "string"));
         when(writeSchemaMock.tables()).thenReturn(Map.of(TABLE, tableDef));
@@ -57,51 +56,57 @@ class TxManagerServiceImplTest {
     void commitTransaction_validRequest_returnsSuccess() {
         when(chronicleServiceClientMock.appendTx(any(Transaction.class))).thenReturn(2L);
 
-        final CommitTransactionRequest request = buildRequest(1L, "SET", TABLE, "{\"eye\":\"some-value\"}");
+        final CommitTransactionRequest request = buildRequest(1L, "PUT", TABLE, "{\"eye\":\"some-value\"}");
         service.commitTransaction(request, responseObserverMock);
 
         verify(responseObserverMock).onNext(argThat(r ->
                 r.getStatus() == CommitTransactionResponse.Code.SUCCESS &&
-                        r.getAppliedSeqNum() == 2L
+                        r.getAppliedSeqNum() == 2L &&
+                        r.getErrorMessage().isEmpty()
         ));
         verify(responseObserverMock).onCompleted();
     }
 
     @Test
-    void commitTransaction_unknownTable_returnsFailureWithoutCallingChronicle() {
-        final CommitTransactionRequest request = buildRequest(1L, "SET", "unknown_table", "{\"eye\":\"val\"}");
+    void commitTransaction_unknownTable_returnsFailureWithError() {
+        final CommitTransactionRequest request = buildRequest(1L, "PUT", "unknown_table", "{\"eye\":\"val\"}");
         service.commitTransaction(request, responseObserverMock);
 
         verify(chronicleServiceClientMock, never()).appendTx(any());
         verify(responseObserverMock).onNext(argThat(r ->
-                r.getStatus() == CommitTransactionResponse.Code.FAILURE
+                r.getStatus() == CommitTransactionResponse.Code.FAILURE &&
+                        r.getErrorMessage().contains("Unknown table")
         ));
         verify(responseObserverMock).onCompleted();
     }
 
     @Test
-    void commitTransaction_invalidJson_returnsFailureWithoutCallingChronicle() {
-        final CommitTransactionRequest request = buildRequest(1L, "SET", TABLE, "not-json");
+    void commitTransaction_invalidJson_returnsFailureWithError() {
+        final CommitTransactionRequest request = buildRequest(1L, "PUT", TABLE, "not-json");
         service.commitTransaction(request, responseObserverMock);
 
         verify(chronicleServiceClientMock, never()).appendTx(any());
         verify(responseObserverMock).onNext(argThat(r ->
-                r.getStatus() == CommitTransactionResponse.Code.FAILURE
+                r.getStatus() == CommitTransactionResponse.Code.FAILURE &&
+                        !r.getErrorMessage().isEmpty()
         ));
         verify(responseObserverMock).onCompleted();
     }
 
     @Test
-    void commitTransaction_chronicleReturnsUnexpectedSeqNum_returnsFailure() {
-        // chronicle returns a seq num that doesn't match expectedSeqNum + 1
-        when(chronicleServiceClientMock.appendTx(any(Transaction.class))).thenReturn(99L);
+    void commitTransaction_chronicleReturnsUnexpectedSeqNum_returnsFailureWithMessage() {
+        long expected = 1L;
+        long returned = 99L;
+        when(chronicleServiceClientMock.appendTx(any(Transaction.class))).thenReturn(returned);
 
-        final CommitTransactionRequest request = buildRequest(1L, "SET", TABLE, "{\"eye\":\"some-value\"}");
+        final CommitTransactionRequest request = buildRequest(expected, "PUT", TABLE, "{\"eye\":\"some-value\"}");
         service.commitTransaction(request, responseObserverMock);
 
         verify(responseObserverMock).onNext(argThat(r ->
                 r.getStatus() == CommitTransactionResponse.Code.FAILURE &&
-                        r.getAppliedSeqNum() == 99L
+                        r.getAppliedSeqNum() == returned &&
+                        r.getErrorMessage().equals("Sequence number mismatch: expected " + (expected + 1) + ", got " + returned)
         ));
+        verify(responseObserverMock).onCompleted();
     }
 }

@@ -44,6 +44,7 @@ public class TxManagerServiceImpl extends TxManagerServiceGrpc.TxManagerServiceI
                 final CommitTransactionResponse failureResponse = CommitTransactionResponse.newBuilder()
                         .setStatus(CommitTransactionResponse.Code.FAILURE)
                         .setAppliedSeqNum(tx.expectedSeqNum())
+                        .setErrorMessage(validationError)
                         .build();
                 responseObserver.onNext(failureResponse);
                 responseObserver.onCompleted();
@@ -53,14 +54,20 @@ public class TxManagerServiceImpl extends TxManagerServiceGrpc.TxManagerServiceI
 
         final long lastCommitedSeqNum = chronicleServiceClient.appendTx(tx);
 
-        final CommitTransactionResponse.Code status = lastCommitedSeqNum == tx.expectedSeqNum() + 1
-                ? CommitTransactionResponse.Code.SUCCESS
-                : CommitTransactionResponse.Code.FAILURE;
+        final CommitTransactionResponse response;
 
-        final CommitTransactionResponse response = CommitTransactionResponse.newBuilder()
-                .setStatus(status)
-                .setAppliedSeqNum(lastCommitedSeqNum)
-                .build();
+        if (lastCommitedSeqNum != tx.expectedSeqNum() + 1) {
+            response = CommitTransactionResponse.newBuilder()
+                    .setStatus(CommitTransactionResponse.Code.FAILURE)
+                    .setAppliedSeqNum(lastCommitedSeqNum)
+                    .setErrorMessage("Sequence number mismatch: expected " + (tx.expectedSeqNum() + 1) + ", got " + lastCommitedSeqNum)
+                    .build();
+        } else {
+            response = CommitTransactionResponse.newBuilder()
+                    .setStatus(CommitTransactionResponse.Code.SUCCESS)
+                    .setAppliedSeqNum(lastCommitedSeqNum)
+                    .build();
+        }
 
         responseObserver.onNext(response);
         responseObserver.onCompleted();
