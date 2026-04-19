@@ -25,7 +25,7 @@ public class ChronicleServiceClient {
     public long appendTx(Transaction tx) {
         final AppendTxRequest request = AppendTxRequest.newBuilder()
                 .setChronicleId(chronicleId)
-                .setSeqNum(tx.expectedSeqNum())
+                .setSeqNum(tx.seqNum())
                 .setTx(tx.serializeOperations())
                 .build();
 

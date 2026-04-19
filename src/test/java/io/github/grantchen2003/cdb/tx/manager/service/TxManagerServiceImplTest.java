@@ -43,7 +43,7 @@ class TxManagerServiceImplTest {
 
     private CommitTransactionRequest buildRequest(long seqNum, String opType, String table, String data) {
         return CommitTransactionRequest.newBuilder()
-                .setExpectedSeqNum(seqNum)
+                .setSeqNum(seqNum)
                 .addOperations(Operation.newBuilder()
                         .setOpType(Operation.OpType.valueOf(opType))
                         .setTable(table)
@@ -61,7 +61,7 @@ class TxManagerServiceImplTest {
 
         verify(responseObserverMock).onNext(argThat(r ->
                 r.getStatus() == CommitTransactionResponse.Code.SUCCESS &&
-                        r.getAppliedSeqNum() == 2L &&
+                        r.getCommittedSeqNum() == 2L &&
                         r.getErrorMessage().isEmpty()
         ));
         verify(responseObserverMock).onCompleted();
@@ -104,7 +104,7 @@ class TxManagerServiceImplTest {
 
         verify(responseObserverMock).onNext(argThat(r ->
                 r.getStatus() == CommitTransactionResponse.Code.FAILURE &&
-                        r.getAppliedSeqNum() == returned &&
+                        r.getCommittedSeqNum() == returned &&
                         r.getErrorMessage().equals("Sequence number mismatch: expected " + (expected + 1) + ", got " + returned)
         ));
         verify(responseObserverMock).onCompleted();

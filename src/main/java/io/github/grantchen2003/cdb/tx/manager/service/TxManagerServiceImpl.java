@@ -28,7 +28,7 @@ public class TxManagerServiceImpl extends TxManagerServiceGrpc.TxManagerServiceI
     @Override
     public void commitTransaction(CommitTransactionRequest request, StreamObserver<CommitTransactionResponse> responseObserver) {
         final Transaction tx = new Transaction(
-                request.getExpectedSeqNum(),
+                request.getSeqNum(),
                 request.getOperationsList().stream()
                         .map(op -> new Operation(
                                 Operation.OpType.valueOf(op.getOpType().name()),
@@ -43,7 +43,7 @@ public class TxManagerServiceImpl extends TxManagerServiceGrpc.TxManagerServiceI
             if (validationError != null) {
                 final CommitTransactionResponse failureResponse = CommitTransactionResponse.newBuilder()
                         .setStatus(CommitTransactionResponse.Code.FAILURE)
-                        .setAppliedSeqNum(tx.expectedSeqNum())
+                        .setCommittedSeqNum(tx.seqNum())
                         .setErrorMessage(validationError)
                         .build();
                 responseObserver.onNext(failureResponse);
@@ -56,16 +56,16 @@ public class TxManagerServiceImpl extends TxManagerServiceGrpc.TxManagerServiceI
 
         final CommitTransactionResponse response;
 
-        if (lastCommitedSeqNum != tx.expectedSeqNum()) {
+        if (lastCommitedSeqNum != tx.seqNum()) {
             response = CommitTransactionResponse.newBuilder()
                     .setStatus(CommitTransactionResponse.Code.FAILURE)
-                    .setAppliedSeqNum(lastCommitedSeqNum)
-                    .setErrorMessage("Sequence number mismatch: expected " + (lastCommitedSeqNum + 1) + ", got " + tx.expectedSeqNum())
+                    .setCommittedSeqNum(lastCommitedSeqNum)
+                    .setErrorMessage("Sequence number mismatch: expected " + (lastCommitedSeqNum + 1) + ", got " + tx.seqNum())
                     .build();
         } else {
             response = CommitTransactionResponse.newBuilder()
                     .setStatus(CommitTransactionResponse.Code.SUCCESS)
-                    .setAppliedSeqNum(lastCommitedSeqNum)
+                    .setCommittedSeqNum(lastCommitedSeqNum)
                     .build();
         }
 

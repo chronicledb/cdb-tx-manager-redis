@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.List;
 
-public record Transaction(long expectedSeqNum, List<Operation> operations) {
+public record Transaction(long seqNum, List<Operation> operations) {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 

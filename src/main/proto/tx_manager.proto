@@ -21,7 +21,7 @@ message Operation {
 }
 
 message CommitTransactionRequest {
-  uint64 expected_seq_num = 1;
+  uint64 seq_num = 1;
   repeated Operation operations = 2;
 }
 
@@ -32,6 +32,6 @@ message CommitTransactionResponse {
   }
 
   Code status = 1;
-  int64 applied_seq_num = 2;
+  int64 committed_seq_num = 2;
   string error_message = 3;
 }
