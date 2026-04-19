@@ -56,11 +56,11 @@ public class TxManagerServiceImpl extends TxManagerServiceGrpc.TxManagerServiceI
 
         final CommitTransactionResponse response;
 
-        if (lastCommitedSeqNum != tx.expectedSeqNum() + 1) {
+        if (lastCommitedSeqNum != tx.expectedSeqNum()) {
             response = CommitTransactionResponse.newBuilder()
                     .setStatus(CommitTransactionResponse.Code.FAILURE)
                     .setAppliedSeqNum(lastCommitedSeqNum)
-                    .setErrorMessage("Sequence number mismatch: expected " + (tx.expectedSeqNum() + 1) + ", got " + lastCommitedSeqNum)
+                    .setErrorMessage("Sequence number mismatch: expected " + (lastCommitedSeqNum + 1) + ", got " + tx.expectedSeqNum())
                     .build();
         } else {
             response = CommitTransactionResponse.newBuilder()
