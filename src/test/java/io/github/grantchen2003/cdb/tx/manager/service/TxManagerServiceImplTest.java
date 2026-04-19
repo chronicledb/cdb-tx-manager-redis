@@ -54,7 +54,7 @@ class TxManagerServiceImplTest {
 
     @Test
     void commitTransaction_validRequest_returnsSuccess() {
-        when(chronicleServiceClientMock.appendTx(any(Transaction.class))).thenReturn(2L);
+        when(chronicleServiceClientMock.appendTx(any(Transaction.class))).thenReturn(new ChronicleServiceClient.TxAppendResult(true, 2L, ""));
 
         final CommitTransactionRequest request = buildRequest(1L, "PUT", TABLE, "{\"eye\":\"some-value\"}");
         service.commitTransaction(request, responseObserverMock);
@@ -97,7 +97,7 @@ class TxManagerServiceImplTest {
     void commitTransaction_chronicleReturnsUnexpectedSeqNum_returnsFailureWithMessage() {
         long expected = 1L;
         long returned = 99L;
-        when(chronicleServiceClientMock.appendTx(any(Transaction.class))).thenReturn(returned);
+        when(chronicleServiceClientMock.appendTx(any(Transaction.class))).thenReturn(new ChronicleServiceClient.TxAppendResult(false, 2L, ""));
 
         final CommitTransactionRequest request = buildRequest(expected, "PUT", TABLE, "{\"eye\":\"some-value\"}");
         service.commitTransaction(request, responseObserverMock);

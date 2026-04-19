@@ -44,9 +44,9 @@ class ChronicleClientTest {
                 AppendTxResponse.newBuilder().setCommittedSeqNum(2L).build()
         );
 
-        final long result = client.appendTx(tx);
+        final ChronicleServiceClient.TxAppendResult result = client.appendTx(tx);
 
-        assertEquals(2L, result);
+        assertEquals(2L, result.committedSeqNum());
     }
 
     @Test

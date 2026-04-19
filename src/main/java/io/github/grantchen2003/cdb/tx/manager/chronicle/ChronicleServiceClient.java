@@ -22,7 +22,7 @@ public class ChronicleServiceClient {
         this.chronicleId = chronicleId;
     }
 
-    public long appendTx(Transaction tx) {
+    public TxAppendResult appendTx(Transaction tx) {
         final AppendTxRequest request = AppendTxRequest.newBuilder()
                 .setChronicleId(chronicleId)
                 .setSeqNum(tx.seqNum())
@@ -31,6 +31,16 @@ public class ChronicleServiceClient {
 
         final AppendTxResponse response = blockingStub.appendTx(request);
 
-        return response.getCommittedSeqNum();
+        return new TxAppendResult(
+                response.getSuccess(),
+                response.getCommittedSeqNum(),
+                response.getErrorMessage()
+        );
     }
+
+    public record TxAppendResult(
+            boolean success,
+            long committedSeqNum,
+            String errorMessage
+    ) {}
 }

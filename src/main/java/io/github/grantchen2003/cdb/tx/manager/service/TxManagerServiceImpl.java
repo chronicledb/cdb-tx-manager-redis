@@ -52,20 +52,19 @@ public class TxManagerServiceImpl extends TxManagerServiceGrpc.TxManagerServiceI
             }
         }
 
-        final long lastCommitedSeqNum = chronicleServiceClient.appendTx(tx);
+        final ChronicleServiceClient.TxAppendResult appendTxResult = chronicleServiceClient.appendTx(tx);
 
         final CommitTransactionResponse response;
-
-        if (lastCommitedSeqNum != tx.seqNum()) {
+        if (appendTxResult.success()) {
             response = CommitTransactionResponse.newBuilder()
-                    .setStatus(CommitTransactionResponse.Code.FAILURE)
-                    .setCommittedSeqNum(lastCommitedSeqNum)
-                    .setErrorMessage("Sequence number mismatch: expected " + (lastCommitedSeqNum + 1) + ", got " + tx.seqNum())
+                    .setStatus(CommitTransactionResponse.Code.SUCCESS)
+                    .setCommittedSeqNum(appendTxResult.committedSeqNum())
                     .build();
         } else {
             response = CommitTransactionResponse.newBuilder()
-                    .setStatus(CommitTransactionResponse.Code.SUCCESS)
-                    .setCommittedSeqNum(lastCommitedSeqNum)
+                    .setStatus(CommitTransactionResponse.Code.FAILURE)
+                    .setCommittedSeqNum(appendTxResult.committedSeqNum())
+                    .setErrorMessage(appendTxResult.errorMessage())
                     .build();
         }
 
