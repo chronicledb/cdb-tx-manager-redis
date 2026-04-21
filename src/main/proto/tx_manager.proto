@@ -7,6 +7,7 @@ option java_package = "io.github.grantchen2003.cdb.tx.manager.grpc";
 
 service TxManagerService {
   rpc CommitTransaction (CommitTransactionRequest) returns (CommitTransactionResponse);
+  rpc GetItems(GetItemsRequest) returns (GetItemsResponse);
 }
 
 message Operation {
@@ -34,4 +35,23 @@ message CommitTransactionResponse {
   Code status = 1;
   int64 committed_seq_num = 2;
   string error_message = 3;
+}
+
+message Query {
+  string table = 1;
+  string primary_key_value = 2;
+}
+
+message QueryResult {
+  bool found = 1;
+  string data = 2;
+}
+
+message GetItemsRequest {
+  repeated Query queries = 1;
+}
+
+message GetItemsResponse {
+  uint64 seq_num = 1;
+  repeated QueryResult results = 2;
 }

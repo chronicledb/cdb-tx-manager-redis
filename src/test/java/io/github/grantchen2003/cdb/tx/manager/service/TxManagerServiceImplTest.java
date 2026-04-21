@@ -3,27 +3,36 @@ package io.github.grantchen2003.cdb.tx.manager.service;
 import io.github.grantchen2003.cdb.tx.manager.chronicle.ChronicleServiceClient;
 import io.github.grantchen2003.cdb.tx.manager.grpc.CommitTransactionRequest;
 import io.github.grantchen2003.cdb.tx.manager.grpc.CommitTransactionResponse;
+import io.github.grantchen2003.cdb.tx.manager.grpc.GetItemsRequest;
+import io.github.grantchen2003.cdb.tx.manager.grpc.GetItemsResponse;
 import io.github.grantchen2003.cdb.tx.manager.grpc.Operation;
+import io.github.grantchen2003.cdb.tx.manager.grpc.Query;
+import io.github.grantchen2003.cdb.tx.manager.storageengine.StorageEngine;
 import io.github.grantchen2003.cdb.tx.manager.tx.Transaction;
 import io.github.grantchen2003.cdb.tx.manager.writeschema.WriteSchema;
 import io.grpc.stub.StreamObserver;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.argThat;
-import static org.mockito.Mockito.any;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class TxManagerServiceImplTest {
 
     private ChronicleServiceClient chronicleServiceClientMock;
+    private StorageEngine storageEngineMock;
     private WriteSchema writeSchemaMock;
-    private StreamObserver<CommitTransactionResponse> responseObserverMock;
+    private StreamObserver<CommitTransactionResponse> commitObserverMock;
+    private StreamObserver<GetItemsResponse> getItemsObserverMock;
     private TxManagerServiceImpl service;
 
     private static final String TABLE = "products";
@@ -31,17 +40,23 @@ class TxManagerServiceImplTest {
     @BeforeEach
     void setUp() {
         chronicleServiceClientMock = mock(ChronicleServiceClient.class);
+        storageEngineMock = mock(StorageEngine.class);
         writeSchemaMock = mock(WriteSchema.class);
-        responseObserverMock = mock(StreamObserver.class);
+        commitObserverMock = mock(StreamObserver.class);
+        getItemsObserverMock = mock(StreamObserver.class);
 
         WriteSchema.TableDefinition tableDef = mock(WriteSchema.TableDefinition.class);
         when(tableDef.attributeTypes()).thenReturn(Map.of("eye", "string"));
         when(writeSchemaMock.tables()).thenReturn(Map.of(TABLE, tableDef));
 
-        service = new TxManagerServiceImpl(chronicleServiceClientMock, writeSchemaMock);
+        service = new TxManagerServiceImpl(chronicleServiceClientMock, storageEngineMock, writeSchemaMock);
     }
 
-    private CommitTransactionRequest buildRequest(long seqNum, String opType, String table, String data) {
+    // -------------------------------------------------------------------------
+    // helpers
+    // -------------------------------------------------------------------------
+
+    private CommitTransactionRequest buildCommitRequest(long seqNum, String opType, String table, String data) {
         return CommitTransactionRequest.newBuilder()
                 .setSeqNum(seqNum)
                 .addOperations(Operation.newBuilder()
@@ -52,60 +67,159 @@ class TxManagerServiceImplTest {
                 .build();
     }
 
+    private GetItemsRequest buildGetItemsRequest(String[]... tableKeyPairs) {
+        GetItemsRequest.Builder builder = GetItemsRequest.newBuilder();
+        for (String[] pair : tableKeyPairs) {
+            builder.addQueries(Query.newBuilder()
+                    .setTable(pair[0])
+                    .setPrimaryKeyValue(pair[1])
+                    .build());
+        }
+        return builder.build();
+    }
+
+    private StorageEngine.ItemLookupResults mockLookupResults(long seqNum, List<String> data) {
+        StorageEngine.ItemLookupResults results = mock(StorageEngine.ItemLookupResults.class);
+        when(results.seqNum()).thenReturn(seqNum);
+        when(results.data()).thenReturn(data);
+        return results;
+    }
+
+    // -------------------------------------------------------------------------
+    // commitTransaction
+    // -------------------------------------------------------------------------
+
     @Test
     void commitTransaction_validRequest_returnsSuccess() {
-        when(chronicleServiceClientMock.appendTx(any(Transaction.class))).thenReturn(new ChronicleServiceClient.TxAppendResult(true, 2L, ""));
+        when(chronicleServiceClientMock.appendTx(any(Transaction.class)))
+                .thenReturn(new ChronicleServiceClient.TxAppendResult(true, 2L, ""));
 
-        final CommitTransactionRequest request = buildRequest(1L, "PUT", TABLE, "{\"eye\":\"some-value\"}");
-        service.commitTransaction(request, responseObserverMock);
+        service.commitTransaction(buildCommitRequest(1L, "PUT", TABLE, "{\"eye\":\"some-value\"}"), commitObserverMock);
 
-        verify(responseObserverMock).onNext(argThat(r ->
+        verify(commitObserverMock).onNext(argThat(r ->
                 r.getStatus() == CommitTransactionResponse.Code.SUCCESS &&
                         r.getCommittedSeqNum() == 2L &&
                         r.getErrorMessage().isEmpty()
         ));
-        verify(responseObserverMock).onCompleted();
+        verify(commitObserverMock).onCompleted();
     }
 
     @Test
     void commitTransaction_unknownTable_returnsFailureWithError() {
-        final CommitTransactionRequest request = buildRequest(1L, "PUT", "unknown_table", "{\"eye\":\"val\"}");
-        service.commitTransaction(request, responseObserverMock);
+        service.commitTransaction(buildCommitRequest(1L, "PUT", "unknown_table", "{\"eye\":\"val\"}"), commitObserverMock);
 
         verify(chronicleServiceClientMock, never()).appendTx(any());
-        verify(responseObserverMock).onNext(argThat(r ->
+        verify(commitObserverMock).onNext(argThat(r ->
                 r.getStatus() == CommitTransactionResponse.Code.FAILURE &&
                         r.getErrorMessage().contains("Unknown table")
         ));
-        verify(responseObserverMock).onCompleted();
+        verify(commitObserverMock).onCompleted();
     }
 
     @Test
     void commitTransaction_invalidJson_returnsFailureWithError() {
-        final CommitTransactionRequest request = buildRequest(1L, "PUT", TABLE, "not-json");
-        service.commitTransaction(request, responseObserverMock);
+        service.commitTransaction(buildCommitRequest(1L, "PUT", TABLE, "not-json"), commitObserverMock);
 
         verify(chronicleServiceClientMock, never()).appendTx(any());
-        verify(responseObserverMock).onNext(argThat(r ->
+        verify(commitObserverMock).onNext(argThat(r ->
                 r.getStatus() == CommitTransactionResponse.Code.FAILURE &&
                         !r.getErrorMessage().isEmpty()
         ));
-        verify(responseObserverMock).onCompleted();
+        verify(commitObserverMock).onCompleted();
     }
 
     @Test
     void commitTransaction_chronicleReturnsFailure_passesThrough() {
-        final long returned = 2L;
         when(chronicleServiceClientMock.appendTx(any(Transaction.class)))
-                .thenReturn(new ChronicleServiceClient.TxAppendResult(false, returned, ""));
+                .thenReturn(new ChronicleServiceClient.TxAppendResult(false, 2L, ""));
 
-        final CommitTransactionRequest request = buildRequest(1L, "PUT", TABLE, "{\"eye\":\"some-value\"}");
-        service.commitTransaction(request, responseObserverMock);
+        service.commitTransaction(buildCommitRequest(1L, "PUT", TABLE, "{\"eye\":\"some-value\"}"), commitObserverMock);
 
-        verify(responseObserverMock).onNext(argThat(r ->
+        verify(commitObserverMock).onNext(argThat(r ->
                 r.getStatus() == CommitTransactionResponse.Code.FAILURE &&
-                        r.getCommittedSeqNum() == returned
+                        r.getCommittedSeqNum() == 2L
         ));
-        verify(responseObserverMock).onCompleted();
+        verify(commitObserverMock).onCompleted();
+    }
+
+    // -------------------------------------------------------------------------
+    // getItems
+    // -------------------------------------------------------------------------
+
+    @Test
+    void getItems_emptyQueryList_returnsEmptyResults() {
+        StorageEngine.ItemLookupResults results = mockLookupResults(5L, List.of());
+        when(storageEngineMock.getItems(anyList())).thenReturn(results);
+
+        service.getItems(buildGetItemsRequest(), getItemsObserverMock);
+
+        verify(getItemsObserverMock).onNext(argThat(r ->
+                r.getSeqNum() == 5L &&
+                        r.getResultsList().isEmpty()
+        ));
+        verify(getItemsObserverMock).onCompleted();
+    }
+
+    @Test
+    void getItems_singleItemFound_returnsFoundWithData() {
+        StorageEngine.ItemLookupResults results = mockLookupResults(10L, List.of("{\"eye\":\"blue\"}"));
+        when(storageEngineMock.getItems(anyList())).thenReturn(results);
+
+        service.getItems(buildGetItemsRequest(new String[]{TABLE, "pk-1"}), getItemsObserverMock);
+
+        verify(getItemsObserverMock).onNext(argThat(r ->
+                r.getSeqNum() == 10L &&
+                        r.getResultsCount() == 1 &&
+                        r.getResults(0).getFound() &&
+                        r.getResults(0).getData().equals("{\"eye\":\"blue\"}")
+        ));
+        verify(getItemsObserverMock).onCompleted();
+    }
+
+    @Test
+    void getItems_singleItemNotFound_returnsNotFound() {
+        StorageEngine.ItemLookupResults results = mockLookupResults(10L, Arrays.asList((String) null));
+        when(storageEngineMock.getItems(anyList())).thenReturn(results);
+
+        service.getItems(buildGetItemsRequest(new String[]{TABLE, "pk-missing"}), getItemsObserverMock);
+
+        verify(getItemsObserverMock).onNext(argThat(r ->
+                r.getResultsCount() == 1 &&
+                        !r.getResults(0).getFound() &&
+                        r.getResults(0).getData().isEmpty()
+        ));
+        verify(getItemsObserverMock).onCompleted();
+    }
+
+    @Test
+    void getItems_mixedResults_preservesOrderAndFoundness() {
+        StorageEngine.ItemLookupResults results = mockLookupResults(20L, Arrays.asList("{\"eye\":\"green\"}", null, "{\"eye\":\"brown\"}"));
+        when(storageEngineMock.getItems(anyList())).thenReturn(results);
+
+        service.getItems(buildGetItemsRequest(
+                new String[]{TABLE, "pk-1"},
+                new String[]{TABLE, "pk-missing"},
+                new String[]{TABLE, "pk-3"}
+        ), getItemsObserverMock);
+
+        verify(getItemsObserverMock).onNext(argThat(r ->
+                r.getSeqNum() == 20L &&
+                        r.getResultsCount() == 3 &&
+                        r.getResults(0).getFound()  && r.getResults(0).getData().equals("{\"eye\":\"green\"}") &&
+                        !r.getResults(1).getFound() && r.getResults(1).getData().isEmpty() &&
+                        r.getResults(2).getFound()  && r.getResults(2).getData().equals("{\"eye\":\"brown\"}")
+        ));
+        verify(getItemsObserverMock).onCompleted();
+    }
+
+    @Test
+    void getItems_seqNumPassedThrough() {
+        StorageEngine.ItemLookupResults results = mockLookupResults(42L, List.of("{\"eye\":\"hazel\"}"));
+        when(storageEngineMock.getItems(anyList())).thenReturn(results);
+
+        service.getItems(buildGetItemsRequest(new String[]{TABLE, "pk-1"}), getItemsObserverMock);
+
+        verify(getItemsObserverMock).onNext(argThat(r -> r.getSeqNum() == 42L));
+        verify(getItemsObserverMock).onCompleted();
     }
 }

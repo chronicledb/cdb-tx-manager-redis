@@ -5,7 +5,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.grantchen2003.cdb.tx.manager.chronicle.ChronicleServiceClient;
 import io.github.grantchen2003.cdb.tx.manager.grpc.CommitTransactionRequest;
 import io.github.grantchen2003.cdb.tx.manager.grpc.CommitTransactionResponse;
+import io.github.grantchen2003.cdb.tx.manager.grpc.GetItemsRequest;
+import io.github.grantchen2003.cdb.tx.manager.grpc.GetItemsResponse;
+import io.github.grantchen2003.cdb.tx.manager.grpc.QueryResult;
 import io.github.grantchen2003.cdb.tx.manager.grpc.TxManagerServiceGrpc;
+import io.github.grantchen2003.cdb.tx.manager.storageengine.StorageEngine;
 import io.github.grantchen2003.cdb.tx.manager.tx.Operation;
 import io.github.grantchen2003.cdb.tx.manager.tx.Transaction;
 import io.github.grantchen2003.cdb.tx.manager.writeschema.WriteSchema;
@@ -14,6 +18,7 @@ import net.devh.boot.grpc.server.service.GrpcService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
 import java.util.Map;
 
 @GrpcService
@@ -23,10 +28,15 @@ public class TxManagerServiceImpl extends TxManagerServiceGrpc.TxManagerServiceI
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private final ChronicleServiceClient chronicleServiceClient;
+    private final StorageEngine storageEngine;
     private final WriteSchema writeSchema;
 
-    public TxManagerServiceImpl(ChronicleServiceClient chronicleServiceClient, WriteSchema writeSchema) {
+    public TxManagerServiceImpl(
+            ChronicleServiceClient chronicleServiceClient,
+            StorageEngine storageEngine,
+            WriteSchema writeSchema) {
         this.chronicleServiceClient = chronicleServiceClient;
+        this.storageEngine = storageEngine;
         this.writeSchema = writeSchema;
     }
 
@@ -89,6 +99,27 @@ public class TxManagerServiceImpl extends TxManagerServiceGrpc.TxManagerServiceI
         responseObserver.onCompleted();
 
         log.info("----------------------------------------------------");
+    }
+
+    @Override
+    public void getItems(GetItemsRequest request, StreamObserver<GetItemsResponse> responseObserver) {
+        final List<StorageEngine.ItemLookup> itemLookups = request.getQueriesList().stream()
+                .map(q -> new StorageEngine.ItemLookup(q.getTable(), q.getPrimaryKeyValue()))
+                .toList();
+
+        final StorageEngine.ItemLookupResults results = storageEngine.getItems(itemLookups);
+
+        final GetItemsResponse.Builder responseBuilder = GetItemsResponse.newBuilder()
+                .setSeqNum(results.seqNum());
+
+        results.data().stream()
+                .map(data -> data == null
+                        ? QueryResult.newBuilder().setFound(false).build()
+                        : QueryResult.newBuilder().setFound(true).setData(data).build())
+                .forEach(responseBuilder::addResults);
+
+        responseObserver.onNext(responseBuilder.build());
+        responseObserver.onCompleted();
     }
 
     private String validateAgainstWriteSchema(Operation op) {
