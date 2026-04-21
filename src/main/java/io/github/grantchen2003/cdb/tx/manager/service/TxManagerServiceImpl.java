@@ -11,12 +11,15 @@ import io.github.grantchen2003.cdb.tx.manager.tx.Transaction;
 import io.github.grantchen2003.cdb.tx.manager.writeschema.WriteSchema;
 import io.grpc.stub.StreamObserver;
 import net.devh.boot.grpc.server.service.GrpcService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 
 @GrpcService
 public class TxManagerServiceImpl extends TxManagerServiceGrpc.TxManagerServiceImplBase {
 
+    private static final Logger log = LoggerFactory.getLogger(TxManagerServiceImpl.class);
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private final ChronicleServiceClient chronicleServiceClient;
@@ -29,6 +32,12 @@ public class TxManagerServiceImpl extends TxManagerServiceGrpc.TxManagerServiceI
 
     @Override
     public void commitTransaction(CommitTransactionRequest request, StreamObserver<CommitTransactionResponse> responseObserver) {
+        log.info("----------------------------------------------------");
+
+        final long start = System.currentTimeMillis();
+
+        log.info("[commitTransaction] PAYLOAD | seqNum={}", request.getSeqNum());
+
         final Transaction tx = new Transaction(
                 request.getSeqNum(),
                 request.getOperationsList().stream()
@@ -43,26 +52,32 @@ public class TxManagerServiceImpl extends TxManagerServiceGrpc.TxManagerServiceI
         for (final Operation op : tx.operations()) {
             final String validationError = validateAgainstWriteSchema(op);
             if (validationError != null) {
-                final CommitTransactionResponse failureResponse = CommitTransactionResponse.newBuilder()
+                log.warn("[commitTransaction] VALIDATION_FAIL | seqNum={} error='{}'", request.getSeqNum(), validationError);
+                responseObserver.onNext(CommitTransactionResponse.newBuilder()
                         .setStatus(CommitTransactionResponse.Code.FAILURE)
                         .setCommittedSeqNum(tx.seqNum())
                         .setErrorMessage(validationError)
-                        .build();
-                responseObserver.onNext(failureResponse);
+                        .build());
                 responseObserver.onCompleted();
                 return;
             }
         }
 
+        final long chronicleStart = System.currentTimeMillis();
         final ChronicleServiceClient.TxAppendResult appendTxResult = chronicleServiceClient.appendTx(tx);
+        final long chronicleDuration = System.currentTimeMillis() - chronicleStart;
 
         final CommitTransactionResponse response;
         if (appendTxResult.success()) {
+            log.info("[commitTransaction] OK  | seqNum={} committedSeqNum={} chronicleMs={} totalMs={}",
+                    request.getSeqNum(), appendTxResult.committedSeqNum(), chronicleDuration, System.currentTimeMillis() - start);
             response = CommitTransactionResponse.newBuilder()
                     .setStatus(CommitTransactionResponse.Code.SUCCESS)
                     .setCommittedSeqNum(appendTxResult.committedSeqNum())
                     .build();
         } else {
+            log.warn("[commitTransaction] FAIL | seqNum={} error='{}' chronicleMs={} totalMs={}",
+                    request.getSeqNum(), appendTxResult.errorMessage(), chronicleDuration, System.currentTimeMillis() - start);
             response = CommitTransactionResponse.newBuilder()
                     .setStatus(CommitTransactionResponse.Code.FAILURE)
                     .setCommittedSeqNum(appendTxResult.committedSeqNum())
@@ -72,6 +87,8 @@ public class TxManagerServiceImpl extends TxManagerServiceGrpc.TxManagerServiceI
 
         responseObserver.onNext(response);
         responseObserver.onCompleted();
+
+        log.info("----------------------------------------------------");
     }
 
     private String validateAgainstWriteSchema(Operation op) {
