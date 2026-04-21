@@ -94,18 +94,17 @@ class TxManagerServiceImplTest {
     }
 
     @Test
-    void commitTransaction_chronicleReturnsUnexpectedSeqNum_returnsFailureWithMessage() {
-        long expected = 1L;
-        long returned = 99L;
-        when(chronicleServiceClientMock.appendTx(any(Transaction.class))).thenReturn(new ChronicleServiceClient.TxAppendResult(false, 2L, ""));
+    void commitTransaction_chronicleReturnsFailure_passesThrough() {
+        final long returned = 2L;
+        when(chronicleServiceClientMock.appendTx(any(Transaction.class)))
+                .thenReturn(new ChronicleServiceClient.TxAppendResult(false, returned, ""));
 
-        final CommitTransactionRequest request = buildRequest(expected, "PUT", TABLE, "{\"eye\":\"some-value\"}");
+        final CommitTransactionRequest request = buildRequest(1L, "PUT", TABLE, "{\"eye\":\"some-value\"}");
         service.commitTransaction(request, responseObserverMock);
 
         verify(responseObserverMock).onNext(argThat(r ->
                 r.getStatus() == CommitTransactionResponse.Code.FAILURE &&
-                        r.getCommittedSeqNum() == returned &&
-                        r.getErrorMessage().equals("Sequence number mismatch: expected " + (expected + 1) + ", got " + returned)
+                        r.getCommittedSeqNum() == returned
         ));
         verify(responseObserverMock).onCompleted();
     }

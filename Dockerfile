@@ -7,6 +7,6 @@ RUN mvn package -DskipTests -B
 
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
-COPY --from=builder /app/target/cdb-tx-manager-1.0-SNAPSHOT.jar app.jar
+COPY --from=builder /app/target/app.jar app.jar
 EXPOSE ${TX_MANAGER_PORT}
 ENTRYPOINT ["java", "-jar", "app.jar"]

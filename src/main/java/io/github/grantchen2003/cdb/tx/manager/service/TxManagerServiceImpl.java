@@ -10,9 +10,11 @@ import io.github.grantchen2003.cdb.tx.manager.tx.Operation;
 import io.github.grantchen2003.cdb.tx.manager.tx.Transaction;
 import io.github.grantchen2003.cdb.tx.manager.writeschema.WriteSchema;
 import io.grpc.stub.StreamObserver;
+import net.devh.boot.grpc.server.service.GrpcService;
 
 import java.util.Map;
 
+@GrpcService
 public class TxManagerServiceImpl extends TxManagerServiceGrpc.TxManagerServiceImplBase {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
